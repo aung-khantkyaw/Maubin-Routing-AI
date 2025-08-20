@@ -689,7 +689,7 @@ def plan_route():
         cur.execute(
             "INSERT INTO user_route_history (user_id, route_id, "
             "start_name, end_name, total_distance_m, duration_min) "
-            "VALUES (%s, %s, %s, %s, %s, %s);",
+            "VALUES (%s, %s, %s, %s, %s, %s) RETURNING history_id;",
             (
                 user_id,
                 route_id,
@@ -699,12 +699,14 @@ def plan_route():
                 estimated_time / 60
             )
         )
-        
+        history_id = cur.fetchone()[0]
+
         conn.commit()
         
         response = {
             "is_success": True,
             "route_id": route_id,
+            "history_id": history_id,
             "distance": total_distance,
             "estimated_time": estimated_time,
             "route": geojson_route,
