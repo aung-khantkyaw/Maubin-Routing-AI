@@ -280,21 +280,21 @@ class RoadGraph:
 road_graph = RoadGraph()
 
 # Route handlers
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', origins)
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# @app.after_request
+# def after_request(response):
+#     response.headers.add('Access-Control-Allow-Origin', origins)
+#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+#     response.headers.add('Access-Control-Allow-Credentials', 'true')
+#     return response
 
-@app.route('/<path:path>', methods=['OPTIONS'])
-def handle_options(path):
-    response = jsonify({'status': 'OK'})
-    response.headers.add('Access-Control-Allow-Origin', origins)
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
+# @app.route('/<path:path>', methods=['OPTIONS'])
+# def handle_options(path):
+#     response = jsonify({'status': 'OK'})
+#     response.headers.add('Access-Control-Allow-Origin', origins)
+#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+#     return response
 
 @app.route('/', methods=['GET'])
 def main():
