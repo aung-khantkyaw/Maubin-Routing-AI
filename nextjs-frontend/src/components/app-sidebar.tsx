@@ -2,7 +2,7 @@ import * as React from "react"
 import {
     Frame,
     Map,
-    User,
+    Rotate3D,
 } from "lucide-react"
 
 import { NavProjects } from "@/components/nav-projects"
@@ -31,15 +31,16 @@ const data = {
             icon: Frame,
         },
         {
-            name: "Routes",
-            url: "/admin/routes",
+            name: "Locations",
+            url: "/admin/locations",
             icon: Map,
         },
         {
-            name: "Users",
-            url: "/admin/users",
-            icon: User,
+            name: "Roads",
+            url: "/admin/roads",
+            icon: Rotate3D,
         },
+
     ],
 }
 

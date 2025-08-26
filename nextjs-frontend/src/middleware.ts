@@ -16,5 +16,9 @@ export const config = {
     "/(en|mm)/:path",
     "/(login|signup)",
     "/(en|mm)/:path",
+    "/admin/:path",
+    "/map/:path",
+    "/admin/:path/:path",
+    "/admin/:path/:path/:path",
   ],
 };

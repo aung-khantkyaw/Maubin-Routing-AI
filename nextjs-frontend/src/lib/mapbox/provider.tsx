@@ -9,50 +9,68 @@ import { MapContext } from "@/context/map-context";
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 type MapComponentProps = {
-  mapContainerRef: React.RefObject<HTMLDivElement | null>;
-  initialViewState: {
-    longitude: number;
-    latitude: number;
-    zoom: number;
-  };
+  mapContainer: React.RefObject<HTMLDivElement | null>;
   children?: React.ReactNode;
 };
 
 export default function MapProvider({
-  mapContainerRef,
-  initialViewState,
+  mapContainer,
   children,
 }: MapComponentProps) {
-  const map = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  // const mapContainer = useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = useState(false);
 
+
   useEffect(() => {
-    if (!mapContainerRef.current || map.current) return;
+    if (mapRef.current) return
 
-    map.current = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/standard",
-      center: [initialViewState.longitude, initialViewState.latitude],
-      zoom: initialViewState.zoom,
-      attributionControl: false,
-      logoPosition: "bottom-right",
-    });
 
-    map.current.on("load", () => {
-      setLoaded(true);
-    });
+    if (!mapContainer.current) {
+      // setMapError("Map container not found")
+      console.error("Map container ref is null")
+      return
+    }
+
+    try {
+
+      mapRef.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/standard",
+        center: [95.6483, 16.7341],
+        zoom: 9.5, // less zoomed in
+        maxBounds: [
+          [95.55, 16.65], // southwest corner
+          [95.75, 16.80], // northeast corner
+        ],
+      });
+
+
+      mapRef.current.on("error", (e) => {
+        console.error("Mapbox error:", e)
+        // setMapError(`Map error: ${e.error?.message || "Unknown error"}`)
+      })
+
+
+      mapRef.current.on("load", () => {
+        setLoaded(true);
+      });
+    } catch (error) {
+      console.error("Failed to initialize map:", error)
+      // setMapError(`Failed to initialize map: ${error instanceof Error ? error.message : "Unknown error"}`)
+    }
 
     return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
     };
-  }, [initialViewState, mapContainerRef]);
+  }, [mapContainer])
 
   return (
     <div className="z-[1000]">
-      <MapContext.Provider value={{ map: map.current! }}>
+      <MapContext.Provider value={{ map: mapRef.current! }}>
         {children}
       </MapContext.Provider>
       {!loaded && (
