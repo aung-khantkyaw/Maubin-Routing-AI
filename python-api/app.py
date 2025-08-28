@@ -45,6 +45,56 @@ def get_db_connection():
 def calculate_distance(point1, point2):
     return great_circle((point1[1], point1[0]), (point2[1], point2[0])).meters
 
+# Vehicle speed configurations (km/h)
+VEHICLE_SPEEDS = {
+    'car': {
+        'highway': 60,
+        'main_road': 40,
+        'local_road': 25,
+        'residential': 20
+    },
+    'motorcycle': {
+        'highway': 70,
+        'main_road': 45,
+        'local_road': 30,
+        'residential': 25
+    },
+    'bicycle': {
+        'highway': 15,
+        'main_road': 12,
+        'local_road': 10,
+        'residential': 8
+    },
+    'walking': {
+        'highway': 5,
+        'main_road': 5,
+        'local_road': 5,
+        'residential': 5
+    }
+}
+
+def calculate_travel_time(distance_m, road_type='local_road', vehicle_type='car'):
+    """Calculate travel time based on distance, road type, and vehicle type"""
+    if vehicle_type not in VEHICLE_SPEEDS:
+        vehicle_type = 'car'  # Default fallback
+    
+    if road_type not in VEHICLE_SPEEDS[vehicle_type]:
+        road_type = 'local_road'  # Default fallback
+    
+    speed_kmh = VEHICLE_SPEEDS[vehicle_type][road_type]
+    speed_ms = speed_kmh / 3.6  # Convert km/h to m/s
+    
+    return distance_m / speed_ms  # Return time in seconds
+
+def get_road_type_from_db(road_id, cur):
+    """Get road type from database for speed calculation"""
+    try:
+        cur.execute("SELECT road_type FROM roads WHERE id = %s;", (road_id,))
+        result = cur.fetchone()
+        return result[0] if result else 'local_road'
+    except:
+        return 'local_road'
+
 def extract_coordinates_from_wkt(wkt_string):
     """Extract coordinates from a WKT point string"""
     if not wkt_string:
@@ -131,14 +181,26 @@ class RoadGraph:
 
                 segment_length = segment_lengths[i] if segment_lengths and i < len(segment_lengths) else calculate_distance(start_node, end_node)
 
-                self.nodes[start_node].append(end_node)
-                self.edges[(start_node, end_node)] = {
-                    'id': road_id,
-                    'length': segment_length,
-                    'geometry': [start_node, end_node]
-                }
-
-                if not is_oneway:
+                if is_oneway:
+                    # One-way: only end_node to start_node (reverse direction)
+                    if end_node not in self.nodes:
+                        self.nodes[end_node] = []
+                    self.nodes[end_node].append(start_node)
+                    self.edges[(end_node, start_node)] = {
+                        'id': road_id,
+                        'length': segment_length,
+                        'geometry': [end_node, start_node]
+                    }
+                else:
+                    # Two-way: both directions
+                    self.nodes[start_node].append(end_node)
+                    self.edges[(start_node, end_node)] = {
+                        'id': road_id,
+                        'length': segment_length,
+                        'geometry': [start_node, end_node]
+                    }
+                    if end_node not in self.nodes:
+                        self.nodes[end_node] = []
                     self.nodes[end_node].append(start_node)
                     self.edges[(end_node, start_node)] = {
                         'id': road_id,
@@ -669,13 +731,36 @@ def plan_route():
         wkt_coords = ", ".join([f"{lon} {lat}" for lon, lat in path_coords])
         wkt_linestring = f"LINESTRING({wkt_coords})"
 
-        estimated_time = total_distance / 5.0  # Assuming 5 m/s average speed
+        # Calculate estimated time based on vehicle type
+        estimated_times = {}
+        
+        # Calculate time for each vehicle type
+        for v_type in VEHICLE_SPEEDS.keys():
+            total_time = 0
+            
+            for segment in road_segments:
+                road_type = 'local_road'  # Default
+                
+                if segment['road_id'] not in ['user_to_road', 'road_to_user', 'unknown_road']:
+                    road_type = get_road_type_from_db(segment['road_id'], cur)
+                
+                segment_time = calculate_travel_time(
+                    segment['length'], 
+                    road_type, 
+                    v_type
+                )
+                total_time += segment_time
+            
+            estimated_times[v_type] = total_time
+        
+        # Use car as primary time, but return all times
+        estimated_time = estimated_times['car']
 
         cur.execute(
             "INSERT INTO routes (user_id, start_loc, end_loc, "
-            "total_distance_m, estimated_time_s, geom) "
+            "total_distance_m, estimated_time_s, geom, vehicle_type, estimated_times) "
             "VALUES (%s, ST_GeogFromText(%s), ST_GeogFromText(%s), "
-            "%s, %s, ST_GeogFromText(%s)) "
+            "%s, %s, ST_GeogFromText(%s), %s, %s) "
             "RETURNING id;",
             (
                 user_id,
@@ -683,7 +768,9 @@ def plan_route():
                 f"SRID=4326;POINT({end_lon} {end_lat})",
                 total_distance,
                 estimated_time,
-                f"SRID=4326;{wkt_linestring}"
+                f"SRID=4326;{wkt_linestring}",
+                'car',
+                json.dumps(estimated_times)
             )
         )
         route_id = cur.fetchone()[0]
@@ -711,6 +798,7 @@ def plan_route():
             "history_id": history_id,
             "distance": total_distance,
             "estimated_time": estimated_time,
+            "estimated_times": estimated_times,
             "route": geojson_route,
             "road_names": road_names,
             "step_locations": step_locations,
@@ -1223,6 +1311,29 @@ def get_user_locations():
     finally:
         cur.close()
         conn.close()
+
+@app.route('/vehicle-types', methods=['GET'])
+def get_vehicle_types():
+    """Get available vehicle types and their speed configurations"""
+    vehicle_info = {}
+    
+    for vehicle_type, speeds in VEHICLE_SPEEDS.items():
+        vehicle_info[vehicle_type] = {
+            'name': vehicle_type.replace('_', ' ').title(),
+            'speeds': speeds,
+            'icon': {
+                'car': '🚗',
+                'motorcycle': '🏍️', 
+                'bicycle': '🚲',
+                'walking': '🚶'
+            }.get(vehicle_type, '🚗')
+        }
+    
+    return jsonify({
+        "is_success": True, 
+        "vehicle_types": vehicle_info,
+        "default": "car"
+    }), 200
 
 # === ADMIN ROUTES ===
 @app.route('/admin/locations', methods=['POST'])
