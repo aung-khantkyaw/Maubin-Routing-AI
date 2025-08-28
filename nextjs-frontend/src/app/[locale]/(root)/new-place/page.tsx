@@ -1,64 +1,40 @@
-// /* eslint-disable @typescript-eslint/no-explicit-any */
-// import Header from '@/components/home/Header';
-// import Map from '@/components/new-place/Map';
-// import SearchForm from '@/components/new-place/SearchForm';
-
-
-
-
-
-// const LocationFinder: React.FC = () => {
-//     return (
-//         <div className="min-h-screen ">
-//             <Header />
-//             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-//                 <div className={`grid gap-8 transition-all duration-500 grid-cols-3`}>
-//                     {/* Search Form */}
-//                     <SearchForm />
-//                     <Map />
-
-//                     {/* Map Area */}
-
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// };
-
-// export default LocationFinder;
 "use client"
-import { useRef } from "react";
-
-import MapProvider from "@/lib/mapbox/provider";
-import MapStyles from "@/components/map/map-styles";
-import MapCotrols from "@/components/map/map-controls";
-import MapSearch from "@/components/map/map-search";
-import SearchForm from "@/components/new-place/SearchForm";
-
+import Header from "@/components/home/Header";
+import SearchLocation from "@/components/new-place/SearchLocation";
+import { useAuthStore, useIsHydrated } from "@/store/auth-store";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 export default function Home() {
-    const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
+    const { isAuthenticated, isAdmin, hasEmailConfig } = useAuthStore()
+    const router = useRouter()
+
+    const isHydrated = useIsHydrated()
+    const [isLoading, setIsLoading] = useState(true)
+
+    useEffect(() => {
+        if (!isHydrated) {
+            return // Wait for hydration before redirecting
+        }
+
+        if (!isAuthenticated) {
+            router.push("/login")
+        } else {
+            setIsLoading(false)
+        }
+    }, [isAuthenticated, hasEmailConfig, router, isHydrated, isAdmin])
+
+    if (isLoading && isHydrated) {
+        return null
+    }
     return (
-        <div className="w-screen h-screen">
-            <div
-                id="map-container"
-                ref={mapContainerRef}
-                className="absolute inset-0 h-full w-full"
-            />
-
-            <MapProvider
-                mapContainerRef={mapContainerRef}
-                initialViewState={{
-                    longitude: 95.6538,
-                    latitude: 16.7274,
-                    zoom: 15,
-                }}
-            >
-                <MapSearch />
-                {/* <SearchForm /> */}
-                <MapCotrols />
-                <MapStyles />
-            </MapProvider>
+        <div className="min-h-screen bg-gradient-to-br ">
+            <Header />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+                <SearchLocation />
+            </div>
         </div>
-    );
+
+        // <Map accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN as string} />
+    )
 }
