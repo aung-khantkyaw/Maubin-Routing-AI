@@ -6,6 +6,7 @@ An intelligent routing system for Maubin and surrounding areas, built with AI-po
 
 - **JWT Authentication System** - Secure user registration and login
 - **Real-time Route Planning** - Dijkstra's algorithm for optimal pathfinding
+- **Vehicle-Specific Time Estimation** - Google Maps-like time calculation for car, motorcycle, bicycle, and walking
 - **Spatial Database Integration** - PostGIS with Supabase for geographic data
 - **Admin Dashboard** - Location and route management interface
 - **User Profiles** - Personal route history and saved locations
@@ -131,7 +132,8 @@ The Python API provides comprehensive route planning and location management:
 | **Auth** | POST | `/login` | User authentication |
 | **Auth** | POST | `/logout` | User logout |
 | **Auth** | POST | `/refresh-token` | Refresh access token |
-| **Routes** | POST | `/routes` | Calculate optimal route |
+| **Routes** | POST | `/routes` | Calculate optimal route with vehicle-specific times |
+| **Routes** | GET | `/vehicle-types` | Get available vehicle types and speeds |
 | **User** | GET | `/profile` | Get user profile |
 | **User** | GET | `/history` | Get route history |
 | **User** | GET/POST | `/locations` | Manage saved locations |
@@ -146,9 +148,19 @@ The Python API provides comprehensive route planning and location management:
   "end_lon": 95.6550,
   "end_lat": 16.7320,
   "start_name": "Maubin Market",
-  "end_name": "Maubin Bridge"
+  "end_name": "Maubin Bridge",
+  "vehicle_type": "car"
 }
 ```
+
+### Vehicle Types
+
+Supported vehicle types with realistic speed estimates:
+
+- **🚗 Car**: Highway 60km/h, Main roads 40km/h, Local roads 25km/h
+- **🏍️ Motorcycle**: Highway 70km/h, Main roads 45km/h, Local roads 30km/h  
+- **🚲 Bicycle**: Highway 15km/h, Main roads 12km/h, Local roads 10km/h
+- **🚶 Walking**: All roads 5km/h
 
 ### Example Route Response
 
@@ -157,6 +169,13 @@ The Python API provides comprehensive route planning and location management:
   "route_id": "123e4567-e89b-12d3-a456-426614174000",
   "distance": 1250.5,
   "estimated_time": 250.1,
+  "estimated_times": {
+    "car": 250.1,
+    "motorcycle": 200.8,
+    "bicycle": 625.2,
+    "walking": 1500.6
+  },
+  "vehicle_type": "car",
   "route": {
     "type": "Feature",
     "geometry": {

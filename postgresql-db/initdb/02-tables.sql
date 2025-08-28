@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS roads (
     burmese_name VARCHAR(255) NOT NULL,
     english_name VARCHAR(255) NOT NULL,
     geom GEOGRAPHY(LINESTRING, 4326) NOT NULL,
-    length_m double precision[] NOT NULL,  -- Changed to array
+    length_m double precision[] NOT NULL,
     road_type VARCHAR(20) CHECK(road_type IN (
-        'highway', 'local', 'residential', 'service', 'pedestrian'
+        'highway', 'main_road', 'local_road', 'residential', 'service', 'pedestrian'
     )),
     is_oneway BOOLEAN DEFAULT false,
     CONSTRAINT valid_linestring CHECK (ST_GeometryType(geom::geometry) = 'ST_LineString')
@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS routes (
     total_distance_m FLOAT CHECK (total_distance_m > 0),
     estimated_time_s FLOAT CHECK (estimated_time_s > 0),
     geom GEOGRAPHY(LINESTRING, 4326),
+    vehicle_type VARCHAR(20) DEFAULT 'car' CHECK (vehicle_type IN ('car', 'motorcycle', 'bicycle', 'walking')),
+    estimated_times JSONB,
     CONSTRAINT valid_route_linestring CHECK (
         geom IS NULL OR ST_GeometryType(geom::geometry) = 'ST_LineString'
     )
